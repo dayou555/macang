@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>批量导出 — 飞书导出</title>
+  <style>
+    :root { --accent:#0d9488; --fg:#1f2329; --muted:#646a73; --line:#e5e6eb; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: #f5f6f7; color: var(--fg);
+      font: 14px/1.6 -apple-system, "PingFang SC", "Microsoft YaHei", Segoe UI, sans-serif;
+    }
+    .wrap { max-width: 760px; margin: 32px auto; padding: 0 16px; }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    .sub { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+    textarea {
+      width: 100%; min-height: 160px; padding: 12px; border: 1px solid var(--line);
+      border-radius: 10px; font: 13px/1.6 ui-monospace, Menlo, Consolas, monospace; resize: vertical;
+    }
+    .row { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
+    select { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; }
+    label.ck { display: flex; align-items: center; gap: 6px; color: var(--fg); }
+    .row .grow { flex: 1; }
+    button.run {
+      border: none; border-radius: 8px; background: var(--accent); color: #fff;
+      padding: 9px 20px; font-weight: 600; cursor: pointer;
+    }
+    button.run:disabled { opacity: .6; cursor: default; }
+    .progress { margin-top: 16px; background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+    .progress:empty { display: none; }
+    .p-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line); }
+    .p-item:first-child { border-top: none; }
+    .p-item .ic { flex: none; width: 18px; text-align: center; }
+    .p-item .u { min-width: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-size: 12px; }
+    .p-item.ok .ic { color: #2ea121; } .p-item.err .ic { color: #d83931; } .p-item.run .ic { color: var(--accent); }
+    .summary { margin-top: 12px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>批量导出</h1>
+    <div class="sub">每行一个链接：飞书文档、生财有术帖子、X 长文均可。后台逐篇打开提取并下载（需已登录对应站点）。</div>
+    <textarea id="urls" placeholder="https://xxx.feishu.cn/docx/...&#10;https://scys.com/t/...&#10;https://x.com/i/article/..."></textarea>
+    <div class="row">
+      <select id="format">
+        <option value="markdown">Markdown (.md)</option>
+        <option value="html">HTML (.html)</option>
+        <option value="word">Word (.doc)</option>
+      </select>
+      <label class="ck"><input type="checkbox" id="inlineImages" checked /> 内嵌图片</label>
+      <span class="grow"></span>
+      <button class="run" id="start">开始导出</button>
+    </div>
+    <div class="summary" id="summary"></div>
+    <div class="progress" id="progress"></div>
+  </div>
+  <script src="../shared/sites.js"></script>
+  <script src="batch.js"></script>
+</body>
+</html>

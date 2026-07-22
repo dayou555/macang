@@ -1,0 +1,76 @@
+{
+  "manifest_version": 3,
+  "name": "飞书导出",
+  "version": "0.2.1",
+  "description": "飞书 / 生财有术 / X 长文一键导出为 Markdown、HTML、Word、PDF，支持批量导出与转存为新飞书文档。",
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "action": {
+    "default_title": "飞书导出（点击打开侧边栏）",
+    "default_icon": {
+      "16": "icons/16.png",
+      "48": "icons/48.png",
+      "128": "icons/128.png"
+    }
+  },
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "side_panel": {
+    "default_path": "src/sidepanel/sidepanel.html"
+  },
+  "options_ui": {
+    "page": "src/options/options.html",
+    "open_in_tab": true
+  },
+  "permissions": [
+    "scripting",
+    "downloads",
+    "activeTab",
+    "storage",
+    "sidePanel",
+    "tabs",
+    "debugger"
+  ],
+  "host_permissions": [
+    "https://*.feishu.cn/*",
+    "https://*.feishu.net/*",
+    "https://*.feishu-pre.net/*",
+    "https://*.larkoffice.com/*",
+    "https://*.larksuite.com/*",
+    "https://*.larkenterprise.com/*",
+    "https://scys.com/*",
+    "https://*.scys.com/*",
+    "https://*.shengcaiyoushu.com/*",
+    "https://x.com/*",
+    "https://*.x.com/*",
+    "https://twitter.com/*",
+    "https://*.twitter.com/*",
+    "https://*.twimg.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.feishu.cn/*",
+        "https://*.feishu.net/*",
+        "https://*.feishu-pre.net/*",
+        "https://*.larkoffice.com/*",
+        "https://*.larksuite.com/*",
+        "https://*.larkenterprise.com/*",
+        "https://scys.com/*",
+        "https://*.scys.com/*",
+        "https://*.shengcaiyoushu.com/*",
+        "https://x.com/*",
+        "https://*.x.com/*",
+        "https://twitter.com/*",
+        "https://*.twitter.com/*"
+      ],
+      "js": ["src/content/content.js"],
+      "css": ["src/content/floating-button.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

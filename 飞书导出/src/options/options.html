@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>飞书导出 · 设置</title>
+  <style>
+    :root {
+      --accent: #0d9488; --accent-soft: #d9f3ee;
+      --fg: #1f2329; --muted: #8a8f99; --sub: #646a73;
+      --line: #ececf0; --soft: #f6f7fb; --card: #fff;
+      --danger: #d83931; --danger-soft: #fff1f0; --danger-line: #ffd9d6;
+      --ok: #2ea121; --warn: #e8910c;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; display: flex; min-height: 100vh; background: var(--soft); color: var(--fg);
+      font: 14px/1.6 -apple-system, "PingFang SC", "Microsoft YaHei", Segoe UI, sans-serif; }
+    svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* 侧边栏 */
+    .side { width: 248px; flex: none; background: var(--card); border-right: 1px solid var(--line);
+      display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
+    .brand { display: flex; align-items: center; gap: 10px; padding: 18px 20px; border-bottom: 1px solid var(--line); }
+    .brand .logo { width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg, #0d9488, #2dd4bf);
+      display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 15px; }
+    .brand b { font-size: 15px; }
+    nav { padding: 12px; display: flex; flex-direction: column; gap: 2px; }
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px;
+      color: var(--sub); cursor: pointer; user-select: none; transition: background .12s, color .12s; }
+    .nav-item:hover { background: #f3f4f7; }
+    .nav-item.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+    .nav-item svg { width: 18px; height: 18px; }
+
+    /* 主区 */
+    main { flex: 1; padding: 30px 40px 64px; max-width: 1000px; }
+    .page-title { font-size: 20px; font-weight: 700; margin: 0 0 20px; }
+    section { display: none; }
+    section.active { display: block; }
+
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+      padding: 20px 22px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(20, 20, 40, .03); }
+    .card.danger { border-color: var(--danger-line); }
+
+    .chead { display: flex; align-items: flex-start; gap: 14px; }
+    .badge { width: 40px; height: 40px; border-radius: 11px; flex: none; display: grid; place-items: center; }
+    .badge svg { width: 20px; height: 20px; }
+    .b-purple { background: #d9f3ee; color: #0d9488; } .b-green { background: #e7f7ee; color: #2ea121; }
+    .b-blue { background: #e8f1ff; color: #3370ff; } .b-yellow { background: #fff4e0; color: #e8910c; }
+    .b-red { background: #ffeceb; color: #d83931; }
+    .chead .tt { font-weight: 700; font-size: 15px; }
+    .chead .dd { color: var(--muted); font-size: 13px; margin-top: 2px; }
+    .chead .dd a { color: var(--accent); text-decoration: none; }
+
+    /* 行（开关/操作） */
+    .row { display: flex; align-items: center; gap: 14px; padding: 16px 0; }
+    .row + .row { border-top: 1px solid var(--line); }
+    .row .grow { flex: 1; min-width: 0; }
+    .row .tt { font-weight: 600; } .row .dd { color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+    /* 表单 */
+    label.fl { display: block; font-weight: 600; font-size: 13px; margin: 16px 0 6px; }
+    input[type=text], input[type=password], select {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; font-size: 14px;
+      background: #fff; color: var(--fg); outline: none; }
+    input:focus, select:focus { border-color: var(--accent); }
+    select { width: auto; min-width: 150px; }
+
+    /* 按钮 */
+    .btns { display: flex; gap: 10px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+    button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid transparent; border-radius: 9px;
+      padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    button svg { width: 15px; height: 15px; }
+    .b-primary { background: var(--accent); color: #fff; }
+    .b-ghost { background: #fff; color: var(--fg); border-color: var(--line); }
+    .b-danger { background: var(--danger-soft); color: var(--danger); border-color: var(--danger-line); }
+    .b-warn { background: #fff7e8; color: var(--warn); border-color: #ffe2b0; }
+    button:hover { filter: brightness(.99); }
+    button:active { transform: translateY(1px); }
+    button:disabled { opacity: .6; cursor: default; }
+    .msg { font-size: 13px; }
+    .msg.ok { color: var(--ok); } .msg.err { color: var(--danger); }
+    .pill { font-size: 11px; color: var(--sub); background: var(--soft); border: 1px solid var(--line); border-radius: 20px; padding: 3px 10px; }
+
+    /* 开关 */
+    .switch { position: relative; width: 42px; height: 24px; flex: none; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch .sl { position: absolute; inset: 0; background: #d4d7dd; border-radius: 24px; cursor: pointer; transition: .2s; }
+    .switch .sl:before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+    .switch input:checked + .sl { background: var(--accent); }
+    .switch input:checked + .sl:before { transform: translateX(18px); }
+
+    .guide { margin: 14px 0 0; padding: 14px 16px; background: var(--soft); border-radius: 10px; }
+    .guide ol { margin: 0; padding-left: 18px; } .guide li { margin: 6px 0; }
+    .guide code { background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; font-size: .92em; }
+    .ext { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <aside class="side">
+    <div class="brand"><span class="logo">导</span><b>飞书导出</b></div>
+    <nav id="nav">
+      <div class="nav-item active" data-sec="general">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-2.7-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 4.6 15H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.1-2.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9 4.6V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.2 1.8V9a1.6 1.6 0 0 0 1.4 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>
+        <span>通用设置</span>
+      </div>
+      <div class="nav-item" data-sec="feishu">
+        <svg viewBox="0 0 24 24"><path d="M21 2l-2 2"/><path d="M15 7l3 3"/><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.5 12.5L19 4"/></svg>
+        <span>飞书配置</span>
+      </div>
+      <div class="nav-item" data-sec="entry">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+        <span>功能入口</span>
+      </div>
+      <div class="nav-item" data-sec="system">
+        <svg viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10"/><path d="M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg>
+        <span>系统</span>
+      </div>
+      <div class="nav-item" data-sec="about">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <span>关于</span>
+      </div>
+    </nav>
+  </aside>
+
+  <main>
+    <!-- 通用设置 -->
+    <section data-sec="general" class="active">
+      <h1 class="page-title">通用设置</h1>
+      <div class="card">
+        <div class="row">
+          <span class="badge b-blue"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>
+          <div class="grow"><div class="tt">默认导出格式</div><div class="dd">点击工具栏图标时预选的格式</div></div>
+          <select id="format">
+            <option value="markdown">Markdown (.md)</option>
+            <option value="html">HTML (.html)</option>
+            <option value="word">Word (.doc)</option>
+            <option value="pdf">PDF（打印另存）</option>
+          </select>
+        </div>
+        <div class="row">
+          <span class="badge b-purple"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></span>
+          <div class="grow"><div class="tt">内嵌图片</div><div class="dd">导出时把图片转为 base64 内嵌（自包含，体积更大；关闭则保留图片链接）</div></div>
+          <label class="switch"><input type="checkbox" id="inlineImages" /><span class="sl"></span></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- 飞书配置 -->
+    <section data-sec="feishu">
+      <h1 class="page-title">飞书配置</h1>
+      <div class="card">
+        <div class="chead">
+          <span class="badge b-yellow"><svg viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.5 12.5L21 2"/><path d="M16 7l3 3"/></svg></span>
+          <div class="grow">
+            <div class="tt">飞书应用凭证</div>
+            <div class="dd">用于「转存到飞书」调用开放平台 API · <a href="https://open.feishu.cn/app" target="_blank" rel="noreferrer">查看配置文档 ↗</a></div>
+          </div>
+        </div>
+        <label class="fl" for="appId">App ID</label>
+        <input id="appId" type="text" placeholder="请输入应用唯一的 ID 标识 (cli_...)" autocomplete="off" />
+        <label class="fl" for="appSecret">App Secret</label>
+        <input id="appSecret" type="password" placeholder="请输入应用密钥（保存后不再回显，留空表示不修改）" autocomplete="off" />
+        <div class="btns">
+          <button class="b-primary" id="save"><svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>保存凭证</button>
+          <button class="b-ghost" id="test"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>测试连接</button>
+          <button class="b-danger" id="clearCreds"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>清空配置</button>
+          <span class="msg" id="credMsg"></span>
+        </div>
+        <div class="guide">
+          <ol>
+            <li>打开 <a href="https://open.feishu.cn/app" target="_blank" rel="noreferrer">飞书开放平台 · 开发者后台</a> → 创建「企业自建应用」</li>
+            <li>「凭证与基础信息」复制 <code>App ID</code> 与 <code>App Secret</code> 填到上方</li>
+            <li>「权限管理」开通 <code>docx:document</code> 等新版文档读写权限</li>
+            <li>「版本管理与发布」创建版本并发布（自建应用需发布后权限才生效）</li>
+            <li>回此点「测试连接」验证，通过后即可在弹窗点「转存到飞书」</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- 功能入口 -->
+    <section data-sec="entry">
+      <h1 class="page-title">功能入口</h1>
+      <div class="card">
+        <div class="row act" id="goBatch" style="cursor:pointer">
+          <span class="badge b-purple"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></span>
+          <div class="grow"><div class="tt">批量导出</div><div class="dd">粘贴多个飞书链接，逐篇导出下载</div></div>
+          <svg viewBox="0 0 24 24" class="ext"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg>
+        </div>
+        <div class="row act" id="goHistory" style="cursor:pointer">
+          <span class="badge b-blue"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
+          <div class="grow"><div class="tt">导出历史</div><div class="dd">查看每次导出记录（标题/格式/时间/大小）</div></div>
+          <svg viewBox="0 0 24 24" class="ext"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg>
+        </div>
+        <div class="row act" id="goOpen" style="cursor:pointer">
+          <span class="badge b-green"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+          <div class="grow"><div class="tt">帮助 / 飞书开放平台</div><div class="dd">查看配置文档与开放平台后台</div></div>
+          <svg viewBox="0 0 24 24" class="ext"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- 系统 -->
+    <section data-sec="system">
+      <h1 class="page-title">系统</h1>
+      <div class="card">
+        <div class="chead">
+          <span class="badge b-yellow"><svg viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10"/><path d="M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg></span>
+          <div class="grow"><div class="tt">重新加载插件</div><div class="dd">更新代码或插件异常时，重新加载扩展</div></div>
+        </div>
+        <div class="btns"><button class="b-warn" id="reload"><svg viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10"/></svg>重新加载插件</button></div>
+      </div>
+      <div class="card danger">
+        <div class="chead">
+          <span class="badge b-red"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span>
+          <div class="grow"><div class="tt">清空所有数据</div><div class="dd">清空扩展本地数据：导出历史、偏好、飞书应用凭证</div></div>
+        </div>
+        <div class="btns"><button class="b-danger" id="clearAll"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>清空所有数据</button><span class="msg" id="sysMsg"></span></div>
+      </div>
+    </section>
+
+    <!-- 关于 -->
+    <section data-sec="about">
+      <h1 class="page-title">关于</h1>
+      <div class="card">
+        <div class="chead">
+          <span class="badge b-purple" style="width:48px;height:48px;font-weight:800;color:#fff;background:linear-gradient(135deg,#0d9488,#2dd4bf);font-size:18px;display:grid;place-items:center">导</span>
+          <div class="grow">
+            <div class="tt">飞书导出 <span class="pill" id="ver">v0.1.0</span></div>
+            <div class="dd">把飞书 / Lark 文档导出为 Markdown / HTML / Word / PDF，并支持通过开放平台 OpenAPI 转存为新文档。开源学习用，无云端授权、无会员限制、不含任何绕过手段。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>

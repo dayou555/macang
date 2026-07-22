@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>飞书导出</title>
+  <style>
+    :root {
+      --accent:#0d9488; --accent-soft:#d9f3ee; --green:#1f8a4c; --green-soft:#e7f7ee;
+      --fg:#1f2329; --muted:#8a8f99; --sub:#646a73; --line:#ececf0; --soft:#f6f7fb; --card:#fff;
+      --danger:#d83931;
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--soft); color:var(--fg);
+      font:13px/1.6 -apple-system,"PingFang SC","Microsoft YaHei",Segoe UI,sans-serif; }
+    svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+
+    header { display:flex; align-items:center; gap:9px; padding:14px 16px; background:var(--card); border-bottom:1px solid var(--line);
+      position:sticky; top:0; z-index:5; }
+    header .logo { width:26px; height:26px; border-radius:7px; background:linear-gradient(135deg,#0d9488,#2dd4bf);
+      display:grid; place-items:center; color:#fff; font-weight:800; font-size:13px; }
+    header b { font-size:14px; }
+    header .tag { font-size:11px; padding:2px 9px; border-radius:20px; background:var(--soft); color:var(--muted); border:1px solid var(--line); white-space:nowrap; }
+    header .tag.ok { background:var(--green-soft); color:var(--green); border-color:#bfe6cd; }
+    header .gear { margin-left:auto; color:var(--muted); cursor:pointer; display:grid; place-items:center; padding:4px; border-radius:7px; }
+    header .gear:hover { background:var(--soft); color:var(--fg); }
+
+    .body { padding:14px; display:flex; flex-direction:column; gap:12px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; }
+
+    /* 检测状态 */
+    .detect { text-align:center; padding:22px 16px; }
+    .detect .ic { width:46px; height:46px; border-radius:13px; margin:0 auto 12px; display:grid; place-items:center; }
+    .detect.idle .ic { background:var(--accent-soft); color:var(--accent); }
+    .detect.ok .ic { background:var(--green-soft); color:var(--green); }
+    .detect .ic svg { width:24px; height:24px; }
+    .detect h2 { font-size:15px; margin:0 0 4px; }
+    .detect p { color:var(--muted); font-size:12px; margin:0; }
+    .detect .doc { font-weight:600; color:var(--fg); font-size:13px; margin-top:8px; word-break:break-all;
+      background:var(--soft); border-radius:8px; padding:8px 10px; }
+    .redetect { margin-top:12px; }
+
+    .label { color:var(--muted); font-size:12px; margin:2px 0 8px; }
+    .fmts { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .fmt { border:1px solid var(--line); border-radius:10px; padding:10px; text-align:center; cursor:pointer; user-select:none;
+      transition:border-color .12s, background .12s; background:var(--card); }
+    .fmt:hover { border-color:var(--accent); }
+    .fmt.active { border-color:var(--accent); background:var(--accent-soft); }
+    .fmt .t { font-weight:700; }
+    .fmt .d { color:var(--muted); font-size:11px; margin-top:1px; }
+
+    .row { display:flex; align-items:center; gap:10px; }
+    .switch { position:relative; width:40px; height:22px; flex:none; }
+    .switch input { opacity:0; width:0; height:0; }
+    .switch .sl { position:absolute; inset:0; background:#d4d7dd; border-radius:22px; cursor:pointer; transition:.2s; }
+    .switch .sl:before { content:""; position:absolute; width:16px; height:16px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; }
+    .switch input:checked + .sl { background:var(--accent); }
+    .switch input:checked + .sl:before { transform:translateX(18px); }
+
+    button.act { width:100%; border:none; border-radius:11px; padding:12px; font-size:14px; font-weight:700; cursor:pointer; color:#fff;
+      display:flex; align-items:center; justify-content:center; gap:7px; }
+    button.act.primary { background:var(--accent); }
+    button.act.green { background:var(--green); }
+    button.act:hover { filter:brightness(1.04); } button.act:active { transform:translateY(1px); }
+    button.act:disabled { opacity:.55; cursor:default; }
+    button.ghost { background:var(--card); color:var(--fg); border:1px solid var(--line); }
+
+    .status { font-size:12px; min-height:16px; text-align:center; color:var(--muted); word-break:break-all; }
+    .status.ok { color:#2ea121; } .status.err { color:var(--danger); }
+
+    .toolbar { display:flex; justify-content:space-around; gap:8px; padding:4px 2px 14px; }
+    .tb { flex:1; background:var(--card); border:1px solid var(--line); border-radius:11px; padding:9px 4px; cursor:pointer;
+      display:flex; flex-direction:column; align-items:center; gap:4px; color:var(--sub); font-size:11px; transition:border-color .12s,color .12s; }
+    .tb:hover { border-color:var(--accent); color:var(--accent); }
+    .tb svg { width:18px; height:18px; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="logo">导</span>
+    <b>飞书导出</b>
+    <span class="tag" id="tag">检测中…</span>
+    <span class="gear" id="gear" title="设置">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-2.7-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 4.6 15H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.1-2.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9 4.6V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.2 1.8V9a1.6 1.6 0 0 0 1.4 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>
+    </span>
+  </header>
+
+  <div class="body">
+    <!-- 检测状态卡 -->
+    <div class="card">
+      <div class="detect idle" id="detectIdle">
+        <div class="ic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></div>
+        <h2>随时为你服务</h2>
+        <p>支持：飞书 / Lark 文档、生财有术帖子、X 长文与帖子。打开正文页后回到这里即可导出。</p>
+        <button class="act ghost redetect" id="redetect" style="width:auto;display:inline-flex;padding:7px 16px;border-radius:9px;font-size:13px;">重新检测</button>
+      </div>
+      <div class="detect ok" id="detectOk" style="display:none;">
+        <div class="ic"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg></div>
+        <h2 id="detectOkTitle">已识别页面</h2>
+        <p>选择格式后即可导出，或一键转存为新飞书文档。</p>
+        <div class="doc" id="docTitle">—</div>
+      </div>
+    </div>
+
+    <!-- 格式 -->
+    <div class="card" id="formatCard">
+      <div class="label">导出格式</div>
+      <div class="fmts">
+        <div class="fmt" data-format="markdown"><div class="t">Markdown</div><div class="d">.md</div></div>
+        <div class="fmt" data-format="html"><div class="t">HTML</div><div class="d">.html</div></div>
+        <div class="fmt" data-format="word"><div class="t">Word</div><div class="d">.doc</div></div>
+        <div class="fmt" data-format="pdf"><div class="t">PDF</div><div class="d">.pdf</div></div>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <label class="switch"><input type="checkbox" id="inlineImages" /><span class="sl"></span></label>
+        <span style="font-size:12px;color:var(--sub);">内嵌图片（自包含，体积更大）</span>
+      </div>
+    </div>
+
+    <!-- 操作 -->
+    <button class="act primary" id="export">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+      导出当前文档
+    </button>
+    <button class="act green" id="transfer">
+      <svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>
+      转存到飞书（新建文档）
+    </button>
+    <div class="status" id="status"></div>
+
+    <div class="toolbar">
+      <button class="tb" id="batch"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>批量</button>
+      <button class="tb" id="history"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>历史</button>
+      <button class="tb" id="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-2.7-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 4.6 15H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.1-2.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9 4.6V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.2 1.8V9a1.6 1.6 0 0 0 1.4 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>设置</button>
+    </div>
+  </div>
+  <script src="../shared/sites.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>
