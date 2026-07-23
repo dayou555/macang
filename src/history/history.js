@@ -1,4 +1,4 @@
-/* 飞书导出 — 导出历史页 */
+/* 码藏 — 导出历史页 */
 
 const listEl = document.getElementById("list");
 const countEl = document.getElementById("count");

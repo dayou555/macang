@@ -1,15 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "飞书导出",
-  "version": "0.2.1",
-  "description": "飞书 / 生财有术 / X 长文一键导出为 Markdown、HTML、Word、PDF，支持批量导出与转存为新飞书文档。",
+  "name": "码藏 - 飞书/生财有术/X长文导出 Markdown PDF",
+  "short_name": "码藏",
+  "version": "0.3.0",
+  "description": "一键把飞书文档、生财有术帖子、X 长文导出为 Markdown / HTML / Word / PDF，支持批量导出与转存飞书。本机处理，不上传。",
   "icons": {
     "16": "icons/16.png",
     "48": "icons/48.png",
     "128": "icons/128.png"
   },
   "action": {
-    "default_title": "飞书导出（点击打开侧边栏）",
+    "default_title": "码藏（点击打开侧边栏）",
     "default_icon": {
       "16": "icons/16.png",
       "48": "icons/48.png",

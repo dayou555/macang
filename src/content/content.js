@@ -1,6 +1,6 @@
 /**
- * 飞书导出 — content script (ISOLATED world)
- * 在飞书文档页注入一个悬浮按钮，点击展开格式菜单，转发导出请求给 background。
+ * 码藏 — content script (ISOLATED world)
+ * 在支持的正文页注入悬浮按钮，点击展开格式菜单，转发导出请求给 background。
  * 真正的抓取/转换在 background 注入的 MAIN world extractor 里完成。
  */
 (() => {
@@ -35,8 +35,8 @@
 
     const ball = document.createElement("button");
     ball.className = "fxlite-ball";
-    ball.title = "导出（飞书 / 生财有术 / X）";
-    ball.textContent = "导";
+    ball.title = "码藏：导出当前页（飞书 / 生财有术 / X）";
+    ball.textContent = "藏";
 
     const menu = document.createElement("div");
     menu.className = "fxlite-menu";

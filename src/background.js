@@ -1,5 +1,5 @@
 /**
- * 飞书导出 — Service Worker (background)
+ * 码藏 — Service Worker (background)
  * ----------------------------------------------------------------------------
  * 支持：飞书文档 / 生财有术 / X 长文与帖子
  * 消息协议（runtime.sendMessage）：
@@ -34,7 +34,7 @@ function matchPage(url) {
   }
   // X / Twitter
   if (/(^|\.)(x\.com|twitter\.com)$/i.test(host)) {
-    if (/\/i\/article\//i.test(path) || /\/articles?\//i.test(path) || /\/status\/\d+/i.test(path)) {
+    if (/\/i\/article\//i.test(path) || /\/articles?\//i.test(path) || /\/[^/]+\/article\//i.test(path) || /\/status\/\d+/i.test(path)) {
       return { id: "x", label: "X", canExport: true };
     }
     return { id: "x-other", label: "X", canExport: false };

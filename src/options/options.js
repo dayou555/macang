@@ -1,4 +1,4 @@
-/* 飞书导出 — 设置页（侧边导航多分区） */
+/* 码藏 — 设置页（侧边导航多分区） */
 
 const $ = (id) => document.getElementById(id);
 const send = (m) => new Promise((r) => chrome.runtime.sendMessage(m, r));

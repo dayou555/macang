@@ -46,7 +46,7 @@
 
     // —— X / Twitter 长文 Articles + 长帖 ——
     if (X_HOST.test(host)) {
-      if (/\/i\/article\//i.test(path) || /\/articles?\//i.test(path)) {
+      if (/\/i\/article\//i.test(path) || /\/articles?\//i.test(path) || /\/[^/]+\/article\//i.test(path)) {
         return { id: "x-article", label: "X 长文", canExport: true, canTransfer: true, hostKind: "x" };
       }
       if (/\/status\/\d+/i.test(path)) {

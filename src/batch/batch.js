@@ -1,4 +1,4 @@
-/* 飞书导出 — 批量导出页 */
+/* 码藏 — 批量导出页 */
 
 const $ = (id) => document.getElementById(id);
 

@@ -1,5 +1,5 @@
 /**
- * 飞书导出 — 注入层 (MAIN world)
+ * 码藏 — 注入层 (MAIN world)
  * ----------------------------------------------------------------------------
  * 由 background.js 通过 chrome.scripting.executeScript({world:"MAIN"}) 注入飞书文档页。
  *
@@ -629,7 +629,8 @@
     }
     if (/(^|\.)(scys\.com|shengcaiyoushu\.com)$/i.test(host)) return "scys";
     if (/(^|\.)(x\.com|twitter\.com)$/i.test(host)) {
-      if (/\/i\/article\//i.test(path) || /\/articles?\//i.test(path)) return "x-article";
+      // /i/article/ID 、 /user/article/ID 、 /articles?/…
+      if (/\/i\/article\//i.test(path) || /\/articles?\//i.test(path) || /\/[^/]+\/article\//i.test(path)) return "x-article";
       if (/\/status\/\d+/i.test(path)) return "x-status";
       return "x-other";
     }
@@ -643,6 +644,17 @@
     } catch (e) {
       return href;
     }
+  }
+
+  function classAttrs(el, base) {
+    const next = { ...(base || {}) };
+    const cls = ((el.className && String(el.className)) || "").toLowerCase();
+    if (/\bbold\b/.test(cls) || /\bfont-bold\b/.test(cls)) next.bold = true;
+    if (/\bitalic\b/.test(cls) || /\bitalics?\b/.test(cls)) next.italic = true;
+    if (/\bstrike\b/.test(cls) || /\bstrikethrough\b/.test(cls) || /\bline-through\b/.test(cls)) next.strike = true;
+    if (/\bunderline\b/.test(cls)) next.underline = true;
+    if (/\binline-?code\b/.test(cls)) next.code = true;
+    return next;
   }
 
   function inlineRunsFromEl(el) {
@@ -661,13 +673,20 @@
         return;
       }
       if (tag === "script" || tag === "style" || tag === "noscript" || tag === "svg") return;
-      const next = { ...attrs };
+      // 生财飞书块里的项目符号圆点等装饰，不进正文
+      const cls = (node.className && String(node.className)) || "";
+      if (/bullet-dot|block-icon|callout-emoji|emoji-for-text/i.test(cls) && !/block-text|list|bulletlist/i.test(cls)) {
+        // callout emoji 单独处理；这里跳过纯装饰
+        if (/bullet-dot/i.test(cls)) return;
+      }
+      let next = { ...attrs };
       if (tag === "strong" || tag === "b") next.bold = true;
       if (tag === "em" || tag === "i") next.italic = true;
       if (tag === "s" || tag === "del" || tag === "strike") next.strike = true;
       if (tag === "u") next.underline = true;
       if (tag === "code") next.code = true;
       if (tag === "a" && node.getAttribute("href")) next.link = absUrl(node.getAttribute("href"));
+      next = classAttrs(node, next);
       Array.from(node.childNodes).forEach((c) => walk(c, next));
     };
     walk(el, {});
@@ -676,6 +695,44 @@
       if (t) runs.push({ text: t, attrs: {} });
     }
     return runs;
+  }
+
+  /** 把 <div>你好<br><br>世界</div> 这类松散 HTML 拆成段落（生财短帖常见） */
+  function convertBrSeparated(el) {
+    const out = [];
+    let buf = [];
+    const flush = () => {
+      if (!buf.length) return;
+      const runs = [];
+      buf.forEach((n) => {
+        if (n.nodeType === 3) {
+          const t = n.textContent || "";
+          if (t) runs.push({ text: t, attrs: {} });
+        } else if (n.nodeType === 1) {
+          inlineRunsFromEl(n).forEach((r) => runs.push(r));
+        }
+      });
+      buf = [];
+      const t = plain(runs).replace(/\u00a0/g, " ").trim();
+      if (t) out.push({ kind: "paragraph", runs, children: [] });
+    };
+    Array.from(el.childNodes || []).forEach((n) => {
+      if (n.nodeType === 1 && (n.tagName || "").toLowerCase() === "br") {
+        flush();
+        return;
+      }
+      if (n.nodeType === 1 && (n.tagName || "").toLowerCase() === "img") {
+        flush();
+        const src = n.getAttribute("src") || n.getAttribute("data-src") || "";
+        if (src && !src.startsWith("data:image/svg")) {
+          out.push({ kind: "image", url: absUrl(src), alt: n.getAttribute("alt") || "", token: null });
+        }
+        return;
+      }
+      buf.push(n);
+    });
+    flush();
+    return out;
   }
 
   function isSkippable(el) {
@@ -812,71 +869,247 @@
     return util.cleanTitle(document.title) || "未命名";
   }
 
-  function extractScys() {
-    const titleEl =
-      document.querySelector("h1") ||
-      document.querySelector("[class*='title'], [class*='Title']") ||
-      document.querySelector("article h1, .post-title, .topic-title");
-    const title = pickTitle([titleEl && titleEl.innerText, document.title.replace(/[|\-·].*$/, "")]);
+  function extractScysFeishuItem(item) {
+    if (!item || item.nodeType !== 1) return null;
+    const cls = (item.className && String(item.className)) || "";
 
-    const root =
-      firstMatch([
-        "article",
-        "[class*='post-content']",
-        "[class*='PostContent']",
-        "[class*='topic-content']",
-        "[class*='article-content']",
-        "[class*='markdown-body']",
-        "[class*='rich-text']",
-        "[class*='RichText']",
-        "main .content",
-        "main",
-      ]) || document.querySelector("main") || document.body;
-
-    // 尽量避开整页导航：若选中了 body，再收窄到最长文本块
-    let contentRoot = root;
-    if (contentRoot === document.body || (contentRoot.innerText || "").length > 50000) {
-      let best = null;
-      let bestLen = 0;
-      document.querySelectorAll("article, main div, [class*='content']").forEach((el) => {
-        if (isSkippable(el)) return;
-        const len = (el.innerText || "").trim().length;
-        if (len > bestLen && len < 80000) {
-          bestLen = len;
-          best = el;
-        }
-      });
-      if (best) contentRoot = best;
+    // 标题：doc-heading-1/2… → Markdown 中文档已有一级标题，故整体 +1，避免多个 #
+    const hm = /doc-heading-(\d)/i.exec(cls);
+    if (hm || /doc-heading-block/i.test(cls)) {
+      const raw = hm ? +hm[1] : 1;
+      const level = Math.min(6, Math.max(1, raw + 1));
+      const header =
+        item.querySelector(".block-header, [class*='block-header'], .block3, .block4, .block2, .block1") || item;
+      const runs = inlineRunsFromEl(header);
+      if (!plain(runs).trim()) return null;
+      return { kind: "heading", level, runs };
     }
 
-    const nodes = convertDomTree(contentRoot);
+    // 高亮块 callout（内含嵌套 vc-doc-item）
+    const callout = item.querySelector(":scope > div.callout, :scope .callout");
+    if (callout && item.querySelector(".block-icon, .callout-block-emoji")) {
+      const nested = Array.from(item.querySelectorAll(":scope .vc-doc-item")).filter((el) => el !== item);
+      // 只取 callout 直接包裹的一层子 item，避免过深
+      const directKids = Array.from(callout.querySelectorAll(":scope > div > .vc-doc-item, :scope > .vc-doc-item"));
+      const targets = directKids.length ? directKids : nested.slice(0, 8);
+      const children = [];
+      targets.forEach((kid) => {
+        const n = extractScysFeishuItem(kid);
+        if (n) children.push(n);
+      });
+      if (!children.length) {
+        const runs = inlineRunsFromEl(callout);
+        const t = plain(runs).replace(/^[^\w\u4e00-\u9fff]+/, "").trim(); // 去掉开头 emoji 装饰可保留在原文
+        if (t) children.push({ kind: "paragraph", runs, children: [] });
+      }
+      return children.length ? { kind: "callout", children } : null;
+    }
+
+    // 引用
+    const quote = item.querySelector(":scope > div.quote_container, :scope > div.vc-quote_container, .quote_container");
+    if (quote && /quote_container/i.test((quote.className && String(quote.className)) || "")) {
+      const kids = Array.from(quote.querySelectorAll(".vc-doc-item"))
+        .map(extractScysFeishuItem)
+        .filter(Boolean);
+      return kids.length ? { kind: "quote", children: kids } : null;
+    }
+
+    // 分栏 grid：扁平化
+    const grid = item.querySelector(":scope > div.grid, :scope > .grid");
+    if (grid && /(^|\s)grid(\s|$)/.test(String(grid.className))) {
+      const leafKids = Array.from(grid.querySelectorAll(".vc-doc-item"))
+        .filter(
+          (el) =>
+            !el.querySelector(".vc-doc-item") &&
+            el.querySelector(".block-text, .block-image, .block-header, .bullet_container")
+        )
+        .map(extractScysFeishuItem)
+        .filter(Boolean);
+      return leafKids.length ? { kind: "group", children: leafKids } : null;
+    }
+
+    // 无序/有序列表（含 .list-children 嵌套子项）
+    const bullet = item.querySelector(":scope > .bullet_container, :scope > .ordered_container, :scope > .number_container");
+    if (bullet) {
+      const listEl = bullet.querySelector(":scope > .row > .list, :scope > .row .list, :scope > .list") || bullet.querySelector(".list");
+      const runs = inlineRunsFromEl(listEl || bullet.querySelector(".row") || bullet);
+      const cleaned = runs
+        .map((r) => ({ ...r, text: r.text.replace(/^[•·]\s*/, "") }))
+        .filter((r) => plain([r]).trim() || r.attrs.link);
+      const children = [];
+      const childWrap = bullet.querySelector(":scope > .list-children");
+      if (childWrap) {
+        Array.from(childWrap.querySelectorAll(":scope > .vc-doc-item")).forEach((kid) => {
+          const n = extractScysFeishuItem(kid);
+          if (n) children.push(n);
+        });
+      }
+      if (!plain(cleaned).trim() && !children.length) return null;
+      const ordered = /ordered|number_container/i.test(String(bullet.className));
+      const node = ordered
+        ? { kind: "ordered", seq: "1", runs: cleaned.length ? cleaned : [{ text: "", attrs: {} }], children }
+        : { kind: "bullet", runs: cleaned.length ? cleaned : [{ text: "", attrs: {} }], children };
+      return node;
+    }
+
+    // 图片
+    const imgWrap = item.querySelector(".block-image");
+    if (imgWrap) {
+      const img = imgWrap.querySelector("img");
+      const src =
+        (img && (img.getAttribute("src") || img.getAttribute("data-src") || img.currentSrc)) ||
+        imgWrap.getAttribute("data-src") ||
+        "";
+      if (src && !src.startsWith("data:image/svg")) {
+        return { kind: "image", url: absUrl(src), alt: (img && img.getAttribute("alt")) || "", token: null };
+      }
+      return null;
+    }
+
+    // 分割线
+    if (item.querySelector(".block-driver, .block-divider, hr")) {
+      return { kind: "divider" };
+    }
+
+    // 普通段落
+    const textEl = item.querySelector(".block-text");
+    if (textEl) {
+      if (textEl.querySelector(".text.blank") && !(textEl.innerText || "").trim()) return null;
+      const runs = inlineRunsFromEl(textEl);
+      if (!plain(runs).trim()) return null;
+      return { kind: "paragraph", runs, children: [] };
+    }
+
+    // 兜底：有可见文字则当段落
+    const t = (item.innerText || "").replace(ZW, "").trim();
+    if (t && t.length < 2000) {
+      return { kind: "paragraph", runs: [{ text: t, attrs: {} }], children: [] };
+    }
+    return null;
+  }
+
+  function extractScysFeishuDoc(root) {
+    const out = [];
+    // 生财长文：feishu-doc-content 的直接子节点即全部顶层块；嵌套块由父块消化，避免重复
+    const items = root.querySelectorAll(":scope > .vc-doc-item");
+    const list = items.length ? items : Array.from(root.querySelectorAll(".vc-doc-item")).filter((el) => {
+      const p = el.parentElement && el.parentElement.closest(".vc-doc-item");
+      return !p;
+    });
+    list.forEach((item) => {
+      const n = extractScysFeishuItem(item);
+      if (n) out.push(n);
+    });
+    return out;
+  }
+
+  function extractScys() {
+    const titleEl =
+      document.querySelector(".post-title, .post-title--for-long-article") ||
+      document.querySelector("h1") ||
+      document.querySelector("[class*='title'], [class*='Title']") ||
+      document.querySelector("article h1, .topic-title");
+    const title = pickTitle([titleEl && titleEl.innerText, document.title.replace(/[|\-·].*$/, "")]);
+
+    const nodes = [];
+    const feishuRoot =
+      document.querySelector(".feishu-doc-content") ||
+      document.querySelector(".feishu-doc-stream .feishu-doc-wrapper") ||
+      document.querySelector(".feishu-doc-stream");
+
+    if (feishuRoot) {
+      // 生财「飞书长文」：正文在 feishu-doc-content 的 vc-doc-item 块流里
+      // （旧逻辑会误匹配短摘要 .post-content，导致只导出几百字）
+      extractScysFeishuDoc(feishuRoot.querySelector(".feishu-doc-content") || feishuRoot).forEach((n) => nodes.push(n));
+    } else {
+      // 普通帖：优先 .post-content / .content-container
+      const post =
+        document.querySelector(".post-content") ||
+        document.querySelector(".content-container") ||
+        firstMatch([
+          "article",
+          "[class*='topic-content']",
+          "[class*='article-content']",
+          "[class*='markdown-body']",
+          "[class*='rich-text']",
+          "[class*='RichText']",
+          "main .content",
+          "main",
+        ]) ||
+        document.querySelector("main") ||
+        document.body;
+
+      const hasSemantic = post && post.querySelector("p, h1, h2, h3, ul, ol, pre, blockquote, table");
+      if (post && !hasSemantic && (post.querySelector("br") || /post-content/i.test(String(post.className || "")))) {
+        convertBrSeparated(post).forEach((n) => nodes.push(n));
+      } else if (post) {
+        convertDomTree(post).forEach((n) => nodes.push(n));
+      }
+    }
+
     return { title, nodes, source: "web-scys" };
   }
 
   function extractXArticle() {
     const titleEl =
+      document.querySelector('[data-testid="twitterArticleTitle"], [data-testid="article-title"], [data-testid="articleTitle"]') ||
       document.querySelector("h1") ||
-      document.querySelector('[data-testid="article-title"], [data-testid="articleTitle"]') ||
       document.querySelector("article h1");
-    const title = pickTitle([titleEl && titleEl.innerText, document.title.replace(/\s*[|/].*$/, "")]);
+    const title = pickTitle([
+      titleEl && titleEl.innerText,
+      document.querySelector('meta[property="og:title"]') && document.querySelector('meta[property="og:title"]').content,
+      document.title.replace(/\s*[|/].*$/, ""),
+    ]);
 
+    // X Articles 正文容器（testid 比 hashed class 稳定）
     const root =
       firstMatch([
+        '[data-testid="twitterArticleReadView"]',
+        '[data-testid="twitterArticleRichTextView"]',
         '[data-testid="article-viewer"]',
         '[data-testid="article"]',
-        "article [data-testid='tweetText']",
+        '[data-testid="longform-article"]',
+        "div[role='article']",
         "article",
         "main article",
         "main [role='article']",
         "main",
       ]) || document.querySelector("main") || document.body;
 
-    const nodes = convertDomTree(root);
+    let nodes = convertDomTree(root);
+
+    // 若结构化结果过短：X 长文常用 span/div + br，再试 br 分段 / 全文分段
+    const plainLen = nodes.reduce((n, x) => n + (x.runs ? plain(x.runs).length : (x.children ? 40 : 0)), 0);
+    if (plainLen < 200 && root) {
+      const brNodes = convertBrSeparated(root);
+      if (brNodes.length > nodes.length) nodes = brNodes;
+    }
+    if (nodes.length < 2 && root) {
+      const text = (root.innerText || "").replace(ZW, "").trim();
+      if (text.length > plainLen) {
+        nodes = text.split(/\n{2,}/).map((para) => {
+          const t = para.replace(/\s+\n/g, "\n").trim();
+          return t ? { kind: "paragraph", runs: [{ text: t, attrs: {} }], children: [] } : null;
+        }).filter(Boolean);
+      }
+    }
+
+    // 封面 / 正文图
+    if (root) {
+      const seen = new Set(nodes.filter((n) => n.kind === "image").map((n) => n.url));
+      root.querySelectorAll('img[src*="pbs.twimg.com"], img[src*="twimg.com"]').forEach((img) => {
+        const src = absUrl(img.getAttribute("src") || img.currentSrc || "");
+        if (!src || seen.has(src) || /profile_images|emoji/i.test(src)) return;
+        seen.add(src);
+        nodes.push({ kind: "image", url: src, alt: img.getAttribute("alt") || "", token: null });
+      });
+    }
+
     return { title, nodes, source: "web-x-article" };
   }
 
   function extractXStatus() {
-    // 长帖 / 普通帖：抓主帖正文（article 中第一条 tweetText）
+    // 长帖 / 普通帖：抓主帖正文；若带「阅读完整文章」链到 Article，提示性保留主帖文字
     const articles = Array.from(document.querySelectorAll('article[data-testid="tweet"], article'));
     const main = articles[0] || document.querySelector("main");
     let title = util.cleanTitle(document.title) || "X 帖子";
@@ -892,7 +1125,7 @@
         nodes.push({ kind: "paragraph", runs, children: [] });
       }
     }
-    // 附带主帖图片
+    // 附带主帖图片（去头像）
     if (main) {
       main.querySelectorAll('img[src*="pbs.twimg.com/media"], img[src*="twimg.com/media"]').forEach((img) => {
         const src = img.getAttribute("src");

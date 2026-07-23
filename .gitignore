@@ -1,0 +1,32 @@
+# Chrome Extension / 码藏
+*.zip
+*.crx
+*.pem
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dependencies
+node_modules/
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Secrets / local env
+.env
+.env.*
+!.env.example
+
+# Temp
+tmp/
+temp/
+*.tmp

@@ -1,4 +1,4 @@
-/* 飞书导出 — 侧边栏主界面（飞书 / 生财有术 / X 长文） */
+/* 码藏 — 侧边栏主界面（飞书 / 生财有术 / X 长文） */
 
 const $ = (id) => document.getElementById(id);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
