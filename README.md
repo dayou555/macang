@@ -49,7 +49,7 @@ Chrome / Edge 扩展：一键导出 **飞书 / Lark 文档**、**生财有术**�
 
 1. 克隆本仓库：
    ```bash
-   git clone https://github.com/DarioLee555/macang.git
+   git clone https://github.com/dayou555/macang.git
    cd macang
    ```
 2. 打开 Chrome / Edge → `chrome://extensions/` → 开启「开发者模式」
