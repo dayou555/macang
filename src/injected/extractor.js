@@ -746,7 +746,8 @@
     return false;
   }
 
-  function convertDomTree(root) {
+  /** childrenOnly：只展开 root 的子元素，不把 root 自身当块处理（blockquote 递归用，避免对同一节点无限自调用） */
+  function convertDomTree(root, childrenOnly) {
     const out = [];
     if (!root) return out;
 
@@ -802,7 +803,7 @@
         return;
       }
       if (tag === "blockquote") {
-        const kids = convertDomTree(el);
+        const kids = convertDomTree(el, true);
         out.push({ kind: "quote", children: kids.length ? kids : [{ kind: "paragraph", runs: inlineRunsFromEl(el) }] });
         return;
       }
@@ -832,7 +833,7 @@
 
     // 若 root 本身是块，直接处理；否则遍历 children
     const rt = (root.tagName || "").toLowerCase();
-    if (/^(h[1-6]|p|li|pre|blockquote|table|figure|img|ul|ol|hr)$/.test(rt)) handleEl(root);
+    if (!childrenOnly && /^(h[1-6]|p|li|pre|blockquote|table|figure|img|ul|ol|hr)$/.test(rt)) handleEl(root);
     else Array.from(root.children || []).forEach(handleEl);
 
     // 若结构化提取为空，退化为按可见文本分段
